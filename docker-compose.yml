@@ -1,0 +1,80 @@
+version: "3.9"
+services:
+  prometheus_server:
+    image: prom/prometheus:v2.26.0
+    volumes:
+    - type: volume
+      source: prometheus_data
+      target: /prometheus
+    - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+    - ./configs/prometheus_rules.yml:/etc/prometheus/prometheus_rules.yml
+    ports:
+    - 9090:9090
+    environment:
+      HOST_IP: $HOST_IP
+    privileged: true
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  grafana_server:
+    image: grafana/grafana:7.5.5
+    volumes:
+    - type: volume
+      source: grafana_configuration
+      target: /etc/grafana
+    - type: volume
+      source: grafana_data
+      target: /var/lib/grafana
+    ports:
+    - 3000:3000
+    privileged: true
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  vmware_exporter:
+    image: pryorda/vmware_exporter:v0.16.0
+    ports:
+    - 9272:9272
+    environment:
+      VSPHERE_HOST: $VSPHERE_HOST
+      VSPHERE_IGNORE_SSL: "True"
+      VSPHERE_USER: $VSPHERE_USER
+      VSPHERE_PASSWORD: "$VSPHERE_PASS"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  alertmanager:
+    image: prom/alertmanager
+    volumes:
+    - type: volume
+      source: prometheus_data
+      target: /prometheus
+    - ./configs/alertmanager.yml:/etc/prometheus/alertmanager.yml
+    command:
+      - '--config.file=/etc/prometheus/alertmanager.yml'
+      - '--storage.path=/prometheus'
+    ports:
+      - 9093:9093
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+volumes:
+  prometheus_data:
+  grafana_configuration:
+  grafana_data:
